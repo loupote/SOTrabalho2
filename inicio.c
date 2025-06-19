@@ -78,15 +78,7 @@ int criacao_arquivos()
     return 0;
 }
 
-int main()
-{
-    if (criacao_arquivos())
-    {
-        perror("Erro ao executar a funcao criacao_arquivos");
-        exit(EXIT_FAILURE);
-    }
-    usleep(3000000);
-
+void round_robin(){
     char nome_arquivo[20];
     FILE *fp[NUM_PROCESSOS];
     int n = 0;
@@ -119,9 +111,13 @@ int main()
                 buffer[cont++] = (char)c;
             }
             fgetc(fp[i]);        // To remove the end of line
-            buffer[cont] = '\0'; // null-terminate the string
+            
+            // Printing part
+            //buffer[cont] = '\0'; // null-terminate the string
+            //printf("%s\n", buffer);
 
-            printf("%s\n", buffer);
+            
+
         }
         n++;
     }
@@ -130,9 +126,20 @@ int main()
     for (int i = 0; i < NUM_PROCESSOS; i++){
         fclose(fp[i]);
     }
+}
+
+
+int main(){
+    if (criacao_arquivos()){
+        perror("Erro ao executar a funcao criacao_arquivos");
+        exit(EXIT_FAILURE);
+    }
+    usleep(2000000);
+
+    round_robin();
 
     // Example: the first line of the first file is 04 R
-    // We look for the address pt[0].pfnumber
+    // Each process has its own page table. So we look for the physical address linked to 04 through the PageTable structure
     // If it is < 0, there is a page fault, the page is outside the RAM.
     // We have to swap out one page frame and swap in the one we need.
     // --> use of algorithm NRU and others
