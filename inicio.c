@@ -7,8 +7,25 @@
 
 #define NUM_PROCESSOS 4
 #define NUM_LINHAS 101
+#define SIZE_RAM 16
 
-int main(){
+typedef struct{ //Representa a página
+    char referenced; //0 ou 1 se for referenciado recentemente
+    char modified; //0 ou 1 se uma linha com
+    char presenca; //1 se a página presente na RAM, 0 se estiver fora
+    long pfnumber; //Em qual endereco da RAM fica essa página
+
+} Page;
+
+
+typedef struct{
+    Page mapping[32]; //Contém numeros entre 0 et 31 que representam o endereço da RAM
+    // Ex: mapping[0] := [1, 0, 1, 14] -> o endereço 0 da memoria virtual representa o endereço 14 na RAM
+} PageTable;
+
+
+
+int criacao_arquivos(){
     char nome_arquivo[20];
     int fdoutput, novofdoutput;
     int pid[NUM_PROCESSOS];
@@ -49,5 +66,22 @@ int main(){
             exit(0);
         }
     }
+    return 0;
+}
+
+
+
+int main(){
+    if (criacao_arquivos()){
+        perror("Erro ao executar a funcao criacao_arquivos");
+    }
+
+    int *ram = (int*)malloc(SIZE_RAM*sizeof(int));
+    PageTable *pt = (PageTable*)malloc(NUM_PROCESSOS*sizeof(PageTable));
+
+    for (int i = 0; i < NUM_PROCESSOS; i++){
+        //
+    }
+
     return 0;
 }
