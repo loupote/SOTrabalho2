@@ -8,6 +8,16 @@
 
 pid_t pids[NUM_PROCESS];
 
+void inicializa_pagina(Page *entrada)
+{
+    entrada->referenced = 0;
+    entrada->modified = 0;
+    entrada->contador_ref = 0;
+    entrada->contador_mod = 0;
+    entrada->presenca = 0;
+    entrada->pfnumber = -1;
+}
+
 int main()
 {
     printf("Number of processes: %d\n", NUM_PROCESS);
@@ -17,17 +27,38 @@ int main()
 
     // criacao_arquivos();
 
-    char *paginavirtual = (char *)malloc(2 * sizeof(char));
-    char *rw = (char *)malloc(sizeof(char));
+    char vpaux[2]; // Process page requested to the GMV
+    char rwaux;    // Access to this request page
 
     // Inicialização da memória
     PageFrame *memoria = (PageFrame *)malloc(SIZE_RAM * sizeof(PageFrame));
+    if (memoria == NULL)
+    {
+        perror("Erro ao alocar memória para memoria");
+        exit(EXIT_FAILURE);
+    }
     for (int i = 0; i < SIZE_RAM; i++)
     {
         memoria[i].virtualaddress = -1;
+        memoria[i].processnum = -1;
     }
 
     PageTable *pagetables = (PageTable *)malloc(NUM_PROCESS * sizeof(PageTable));
+    if (pagetables == NULL)
+    {
+        perror("Erro ao alocar memória para pagetables");
+        exit(EXIT_FAILURE);
+    }
+
+    // Inicializing each page from each process
+    for (int i = 0; i < NUM_PROCESS; i++)
+    {
+        for (int j = 0; j < SIZE_PROCESS; j++)
+        {
+            Page *entrada = &(pagetables[i].mapping[j]);
+            inicializa_pagina(entrada);
+        }
+    }
 
     // Abertura de arquivos
     char nome_arquivo[20];
@@ -47,6 +78,8 @@ int main()
         }
     }
 
+    // Criaçao dos processos
+    int status;
     for (int i = 0; i < NUM_PROCESS; i++)
     {
         if ((pids[i] = fork()) < 0)
@@ -58,9 +91,9 @@ int main()
         else if (pids[i] == 0)
         {                 // Filhos
             close(fd[0]); // Fecha a leitura
-
-            while (1)
-            {
+            int cont = 0;
+            while (cont < SIZE_PROCESS)
+            { // Envio dos requests por pipes
                 kill(getpid(), SIGSTOP);
 
                 char buffer[5]; // 4 chars + 1 for null terminator for print
@@ -82,9 +115,11 @@ int main()
                 char *acesso = strtok(NULL, " ");
                 printf("Endereço: %s, acesso: %s\n", endereco, acesso);
 
-                // Request to the GMV 'endereco' via pipes
+                // Request to the GMV 'endereco' atraves de pipes
                 write(fd[1], endereco, 2);
                 write(fd[1], acesso, 1);
+
+                cont++;
             }
             close(fd[1]);
             exit(0);
@@ -104,13 +139,15 @@ int main()
         sleep(1);
 
         // GMV
-        read(fd[0], paginavirtual, 2);
-        read(fd[0], rw, 1);
-        printf("Request from process %d to page %s in %s\n", process_num, paginavirtual, rw);
+        read(fd[0], vpaux, 2);
+        read(fd[0], &rwaux, 1);
+        int paginavirtual = atoi(vpaux);
+        char rw = rwaux;
+        printf("Request from process %d to page %d in %c\n", process_num, paginavirtual, rw);
 
-        // Buscar na tabela de pagina correspondante ao processo atual
-        Page entrada_pagina = pagetables[process_num].mapping[*paginavirtual];
-        if (entrada_pagina.presenca == 0)
+        // Buscar a página requisita na tabela de pagina correspondante ao processo atual
+        Page *entrada_pagina = &(pagetables[process_num].mapping[paginavirtual]);
+        if (entrada_pagina->presenca == 0)
         { // A pagina nao está presente na memória
             int j = 0;
             while ((memoria[j].virtualaddress != -1) && (j < SIZE_RAM))
@@ -118,67 +155,84 @@ int main()
                 j++;
             }
             if (memoria[j].virtualaddress == -1)
-            {
+            { // Tem espaço livre na memória
                 printf("Free space in memory\n");
-                entrada_pagina.pfnumber = j;
-                memoria[j].virtualaddress = *paginavirtual;
+                memoria[j].virtualaddress = paginavirtual;
                 memoria[j].processnum = process_num;
-                printf("Memory page frame %d/%d contains now logical address %d of process %d\n", j, SIZE_RAM, memoria[j].virtualaddress, memoria[j].processnum);
+                printf("Memory page frame %d/%d contains now logical address %d of process %d\n", j + 1, SIZE_RAM, memoria[j].virtualaddress, memoria[j].processnum);
             }
             else if (j == SIZE_RAM)
-            {
+            { // Nao tem espaço livre
                 printf("No more free space in memory\n");
                 // *ALGORITHM*
+                int alea = rand() % SIZE_RAM;
+                printf("Page frame a ser removida: posicao %d, endereço virtual %d/%d do processo %d\n", alea, memoria[alea].virtualaddress, SIZE_PROCESS, memoria[alea].processnum);
+                printf("Substituicao...\n");
+                memoria[alea].virtualaddress = paginavirtual;
+                memoria[alea].processnum = process_num;
+                Page *entrada_removida = &(pagetables[memoria[alea].processnum].mapping[memoria[alea].virtualaddress]);
+                inicializa_pagina(entrada_removida);
+                printf("Nova page frame na mesma posicao %d: endereço virtual %d do processo %d\n", alea, memoria[alea].virtualaddress, memoria[alea].processnum);
             }
             else
             {
                 perror("Condiçoes IF");
                 exit(EXIT_FAILURE);
             }
+            entrada_pagina->pfnumber = j;
+            entrada_pagina->presenca = 1;
         }
-        else
-        { // A pagina esta presente na memória: HIT
-            // The 'referenced' counter is reset if the line is "R"
-            // We modify the referenced field if it was 0 to 1 (depends on the DeltaT we chose)
-            if (*rw == 'R')
-            {
-                entrada_pagina.contador_ref = 0;
-                entrada_pagina.referenced = 1;
-                printf("A pagina %d do processo %d foi acesso em leitura\n", *paginavirtual, process_num);
-            }
-            // The 'modified' counter is reset if the line is "W"
-            // We change the modified field if it was an access to write ("W")
-            else if (*rw == 'W')
-            {
-                entrada_pagina.contador_mod = 0;
-                entrada_pagina.modified = 1;
-                printf("A pagina %d do processo %d foi acesso em escrita \n", *paginavirtual, process_num);
-            }
+        if (rw == 'R')
+        //  The 'referenced' counter is reset if the line is "R"
+        //  We modify the referenced field if it was 0 to 1 (depends on the DeltaT we chose)
+        {
+            entrada_pagina->contador_ref = 0;
+            entrada_pagina->referenced = 1;
+            printf("A pagina %d do processo %d foi acesso em leitura\n", paginavirtual, process_num);
+        }
+        else if (rw == 'W')
+        // The 'modified' counter is reset if the line is "W"
+        // We change the modified field if it was an access to write ("W")
+        {
+            entrada_pagina->contador_mod = 0;
+            entrada_pagina->modified = 1;
+            printf("A pagina %d do processo %d foi acesso em escrita \n", paginavirtual, process_num);
+        }
 
-            // For all the other pages (from all the processes)
-            for (int k = 0; k < NUM_PROCESS; k++)
+        // Update refernced and modified fields if across time
+        for (int k = 0; k < NUM_PROCESS; k++)
+        {
+            for (int l = 0; l < SIZE_PROCESS; l++)
             {
-                for (int l = 0; l < SIZE_PROCESS; l++)
+                if ((k != process_num) && (l != paginavirtual))
                 {
-                    if ((k != process_num) && (l != *paginavirtual))
+                    Page *entrada_pagina = &(pagetables[k].mapping[l]);
+                    if (entrada_pagina->presenca == 1)
                     {
-                        entrada_pagina.contador_mod++;
-                        entrada_pagina.contador_ref++;
+
+                        entrada_pagina->contador_mod++;
+                        entrada_pagina->contador_ref++;
 
                         // Compare the 'ref' and 'mod' counters with delta_T
                         // If ref_counter greater than delta_T, decrement ref_counter
                         // If mod_counter greater than delta_T, decrement mod_counter
-                        if (entrada_pagina.contador_mod >= DELTA_T)
-                        {
+                    }
+                    printf("Contador mod: %d\n", entrada_pagina->contador_mod);
+                    printf("Contador ref: %d\n", entrada_pagina->contador_ref);
+                    if (entrada_pagina->contador_mod >= DELTA_T)
+                    {
+                        if (entrada_pagina->modified == 1){
                             // Se a pagina nao for alterada há muito tempo
-                            entrada_pagina.modified = 0;
+                            entrada_pagina->modified = 0;
                             printf("A pagina %d do processo %d nao foi modificada há muito tempo.\n", l, k);
                         }
-                        if (entrada_pagina.contador_ref >= DELTA_T)
-                        {
+                    }
+                    if (entrada_pagina->contador_ref >= DELTA_T)
+                    {
+                        if (entrada_pagina->modified == 1){
                             // Se a pagina nao for referenciada há muito tempo
-                            entrada_pagina.referenced = 0;
-                            printf("A pagina %d do processo %d nao foi referenciada há muito tempo.\n", l, k);
+                            entrada_pagina->referenced = 0;
+                        printf("A pagina %d do processo %d nao foi referenciada há muito tempo.\n", l, k);
                         }
                     }
                 }
@@ -191,10 +245,14 @@ int main()
         sleep(1);
         printf("\n");
     }
+
+    waitpid(-1, &status, 0);
+    waitpid(-1, &status, 0);
+    waitpid(-1, &status, 0);
+    waitpid(-1, &status, 0);
+
     close(fd[0]);
 
-    free(paginavirtual);
-    free(rw);
     free(memoria);
     free(pagetables);
 
