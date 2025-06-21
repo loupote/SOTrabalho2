@@ -188,7 +188,7 @@ int main()
         {
             entrada_pagina->contador_ref = 0;
             entrada_pagina->referenced = 1;
-            printf("A pagina %d do processo %d foi acesso em leitura\n", paginavirtual, process_num);
+            printf("A pagina %d do processo %d acabou de ser acesso em leitura\n", paginavirtual, process_num);
         }
         else if (rw == 'W')
         // The 'modified' counter is reset if the line is "W"
@@ -196,7 +196,7 @@ int main()
         {
             entrada_pagina->contador_mod = 0;
             entrada_pagina->modified = 1;
-            printf("A pagina %d do processo %d foi acesso em escrita \n", paginavirtual, process_num);
+            printf("A pagina %d do processo %d acabou de ser acesso em escrita\n", paginavirtual, process_num);
         }
 
         // Update refernced and modified fields if across time
@@ -204,9 +204,9 @@ int main()
         {
             for (int l = 0; l < SIZE_PROCESS; l++)
             {
-                if ((k != process_num) && (l != paginavirtual))
+                Page *entrada_pagina = &(pagetables[k].mapping[l]);
+                if ((k != process_num) || (l != paginavirtual))
                 {
-                    Page *entrada_pagina = &(pagetables[k].mapping[l]);
                     if (entrada_pagina->presenca == 1)
                     {
 
@@ -217,8 +217,6 @@ int main()
                         // If ref_counter greater than delta_T, decrement ref_counter
                         // If mod_counter greater than delta_T, decrement mod_counter
                     }
-                    printf("Contador mod: %d\n", entrada_pagina->contador_mod);
-                    printf("Contador ref: %d\n", entrada_pagina->contador_ref);
                     if (entrada_pagina->contador_mod >= DELTA_T)
                     {
                         if (entrada_pagina->modified == 1){
@@ -236,6 +234,8 @@ int main()
                         }
                     }
                 }
+                printf("Contador mod: %d\n", entrada_pagina->contador_mod);
+                printf("Contador ref: %d\n", entrada_pagina->contador_ref);
             }
         }
 
