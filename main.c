@@ -38,7 +38,7 @@ int main(int argc, char *argv[])
     printf("Number of pages in each page table: %d\n", SIZE_PROCESS);
     printf("\n");
 
-    criacao_arquivos();
+    //criacao_arquivos();
 
     char vpaux[2]; // Process page requested to the GMV
     char rwaux;    // Access to this request page
@@ -149,7 +149,7 @@ int main(int argc, char *argv[])
     while (n < NUM_PROCESS * NUM_LINHAS)
     {
         kill(pids[process_num], SIGCONT);
-        usleep(500000);
+        usleep(100000);
 
         // GMV
         read(fd[0], vpaux, 2);
@@ -255,15 +255,16 @@ int main(int argc, char *argv[])
                     }
                 }
                 //PRINTS PARA VER O AUMENTO DOS CONTADORES
-                printf("Contador mod: %d\n", entrada_pagina->contador_mod);
-                printf("Contador ref: %d\n", entrada_pagina->contador_ref);
+                if (l==16){
+                    printf("Processo %d linha %d, contadores: mod (%d), ref (%d)\n", k, l, entrada_pagina->contador_mod, entrada_pagina->contador_ref);
+                }
             }
         }
 
         process_num = (process_num + 1) % NUM_PROCESS;
         n++;
 
-        usleep(200000);
+        usleep(100000);
         printf("\n");
     }
 

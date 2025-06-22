@@ -52,7 +52,7 @@ int criacao_arquivos()
             int j = 0;
             while (j < NUM_LINHAS)
             {
-                char pagina = binomial(SIZE_PROCESS, 0.5);
+                char pagina = binomial(SIZE_PROCESS, PROBA);
                 char acesso = rand() % 2 ? 'W' : 'R'; // 'W' ou 'R'
 
                 printf("%02d %c\n", pagina, acesso); // Exemplo: 04 R

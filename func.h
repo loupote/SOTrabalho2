@@ -7,7 +7,7 @@
 #define SIZE_RAM 16
 #define SIZE_PROCESS 32
 #define DELTA_T 7 // Number of cycles before a process gets dereferenced and demodified
-
+#define PROBA 0.5
 
 typedef struct
 {                      // Representa a página
