@@ -5,6 +5,16 @@
 
 #include "func.h"
 
+char binomial(int n, double p) { // Compte le nombre de succès
+    char count = 0;
+    for (int i = 0; i < n; i++) {
+        double r = (double) rand() / RAND_MAX; //Normalized ([0,1]) random number
+        if (r < p) count++;
+    }
+    return count;
+}
+
+
 int criacao_arquivos()
 {
     char nome_arquivo[20];
@@ -42,7 +52,7 @@ int criacao_arquivos()
             int j = 0;
             while (j < NUM_LINHAS)
             {
-                char pagina = rand() % 32;            // valores entre 0 e 31
+                char pagina = binomial(SIZE_PROCESS, 0.5);
                 char acesso = rand() % 2 ? 'W' : 'R'; // 'W' ou 'R'
 
                 printf("%02d %c\n", pagina, acesso); // Exemplo: 04 R

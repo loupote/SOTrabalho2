@@ -3,7 +3,7 @@
 #define FUNC_H
 
 #define NUM_PROCESS 4
-#define NUM_LINHAS 10
+#define NUM_LINHAS 101
 #define SIZE_RAM 16
 #define SIZE_PROCESS 32
 #define DELTA_T 7 // Number of cycles before a process gets dereferenced and demodified

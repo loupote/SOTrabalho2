@@ -25,7 +25,7 @@ int main()
     printf("Number of pages in each page table: %d\n", SIZE_PROCESS);
     printf("\n");
 
-    // criacao_arquivos();
+    criacao_arquivos();
 
     char vpaux[2]; // Process page requested to the GMV
     char rwaux;    // Access to this request page
