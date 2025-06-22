@@ -18,8 +18,21 @@ void inicializa_pagina(Page *entrada)
     entrada->pfnumber = -1;
 }
 
-int main()
+int main(int argc, char *argv[])
 {
+
+    char *algoritmo = argv[1];
+    if (argc < 2) {
+        fprintf(stderr, "Usage: %s <algorithm>\n", argv[0]);
+        return EXIT_FAILURE;
+    }
+
+    if (strcmp(algoritmo, "aleatorio") != 0 && strcmp(algoritmo, "NRU") != 0 && strcmp(algoritmo, "2nCh") != 0 && strcmp(algoritmo, "LRU") != 0 && strcmp(algoritmo, "WS") != 0) {
+        printf("Not a valid argument. Please select between aleatorio, NRU, 2nCh, LRU, or WS.\n");
+        return EXIT_FAILURE;
+    }
+
+    printf("Selected algorithm: %s\n", algoritmo);
     printf("Number of processes: %d\n", NUM_PROCESS);
     printf("Number of page frames in memory: %d\n", SIZE_RAM);
     printf("Number of pages in each page table: %d\n", SIZE_PROCESS);
@@ -136,7 +149,7 @@ int main()
     while (n < NUM_PROCESS * NUM_LINHAS)
     {
         kill(pids[process_num], SIGCONT);
-        sleep(1);
+        usleep(500000);
 
         // GMV
         read(fd[0], vpaux, 2);
@@ -165,7 +178,14 @@ int main()
             { // Nao tem espaço livre
                 printf("No more free space in memory\n");
                 // *ALGORITHM*
-                int alea = rand() % SIZE_RAM;
+                int alea;
+                if (strcmp(algoritmo, "aleatorio") == 0){
+                    alea = rand() % SIZE_RAM;
+                }
+                else{
+                    printf("Ainda nao foi desenvolvido nenhum algoritmo. Escolhendo aleatorio....\n");
+                    alea = rand() % SIZE_RAM;
+                }
                 printf("Page frame a ser removida: posicao %d, endereço virtual %d/%d do processo %d\n", alea, memoria[alea].virtualaddress, SIZE_PROCESS, memoria[alea].processnum);
                 printf("Substituicao...\n");
                 memoria[alea].virtualaddress = paginavirtual;
@@ -234,6 +254,7 @@ int main()
                         }
                     }
                 }
+                //PRINTS PARA VER O AUMENTO DOS CONTADORES
                 printf("Contador mod: %d\n", entrada_pagina->contador_mod);
                 printf("Contador ref: %d\n", entrada_pagina->contador_ref);
             }
@@ -242,7 +263,7 @@ int main()
         process_num = (process_num + 1) % NUM_PROCESS;
         n++;
 
-        sleep(1);
+        usleep(200000);
         printf("\n");
     }
 
